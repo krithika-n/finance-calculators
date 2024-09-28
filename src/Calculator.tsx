@@ -1,5 +1,6 @@
-import React, { Component } from "react";
-import { Button, ButtonGroup, Container, Form, Row, Col, InputGroup } from "react-bootstrap";
+import { monitorEventLoopDelay } from "perf_hooks";
+import React from "react";
+import { Button, Container, Form, InputGroup, Table } from "react-bootstrap";
 
 interface IProps{
 }
@@ -15,7 +16,8 @@ interface IState{
     pmiInsurance: number | '';
     hoaFee: number | '';
     otherCosts: number | '';
-    result: number | null,
+    monthlyPayment: number | null,
+    expandForm1: boolean,
 }
 
 export default class Calculator extends React.Component<IProps, IState>{
@@ -32,7 +34,8 @@ export default class Calculator extends React.Component<IProps, IState>{
             pmiInsurance: '',
             hoaFee: '',
             otherCosts: '',
-            result: null,
+            monthlyPayment: null,
+            expandForm1: false
         };
     }
 
@@ -64,7 +67,8 @@ export default class Calculator extends React.Component<IProps, IState>{
             pmiInsurance: '',
             hoaFee: '',
             otherCosts: '',
-            result: null,
+            monthlyPayment: null,
+            expandForm1: false,
         });
     };
 
@@ -77,7 +81,7 @@ export default class Calculator extends React.Component<IProps, IState>{
 
     handleOnSubmit = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        let { homePrice, interestRate, downPayment} = this.state;
+        let { homePrice, interestRate, downPayment, loanTerm} = this.state;
         if(homePrice === ''){
             homePrice = 0;
         } 
@@ -87,11 +91,54 @@ export default class Calculator extends React.Component<IProps, IState>{
         if(downPayment === ''){
             downPayment = 0;
         }
-        const result = (homePrice*interestRate*downPayment)/ 100;
-        this.setState({ result });
+        if(loanTerm === ''){
+            loanTerm = 0;
+        }
+        const loanAmount = homePrice - downPayment;
+        const monthlyInterestRate = interestRate / 1200;
+        const accumulationFactor = Math.pow((1 + monthlyInterestRate), loanTerm * 12);
+        const monthlyPayment = (loanAmount * monthlyInterestRate * accumulationFactor) / (accumulationFactor - 1);
+        this.setState({ monthlyPayment });
+    }
+
+    handleSwitchChange = (e: React.ChangeEvent<HTMLInputElement>) =>{
+        this.setState({ expandForm1: e.target.checked });
+    }
+
+    fillValues = () => {
+        let { homePrice, interestRate, downPayment, loanTerm} = this.state;
+        if(homePrice === ''){
+            homePrice = 0;
+        } 
+        if(interestRate === ''){
+            interestRate = 0;
+        }
+        if(downPayment === ''){
+            downPayment = 0;
+        }
+        if(loanTerm === ''){
+            loanTerm = 0;
+        }
+        const monthlyInterestRate = interestRate / 1200;
+        const monthlyPayment = this.state.monthlyPayment === null ? 0 : this.state.monthlyPayment;
+        const tableRows = [];
+        let remainingBalance = homePrice - downPayment;
+        for(let i = 0; i < loanTerm * 12; i++){
+            let interestPayment = remainingBalance * monthlyInterestRate;
+            let principalPayment = monthlyPayment - interestPayment;
+            remainingBalance = remainingBalance - principalPayment;
+            tableRows.push([interestPayment, principalPayment, remainingBalance]);
+        }
+        return tableRows.map((row, index) => (
+            <tr>
+                <td>{index + 1}</td>
+                <td>{row[0]}</td>
+                <td>{row[1]}</td>
+                <td>{row[2]}</td>
+            </tr>
+        ));
     }
     
-
     render() : React.ReactNode {
         return(
           <Container>
@@ -137,77 +184,93 @@ export default class Calculator extends React.Component<IProps, IState>{
                     <Form.Check
                         type="switch"
                         label="Include Taxes & Costs"
+                        checked={this.state.expandForm1}
+                        onChange={this.handleSwitchChange}
                     />
                 </Form.Group>
-                <Form.Group>
-                    <Form.Label>Property Taxes</Form.Label>
-                    <Form.Control type="text">
-                    </Form.Control>
-                    <Form.Select>
-                       {this.getSymbolsAsOptions()}
-                    </Form.Select>
-                </Form.Group>
-                <Form.Group>
-                    <Form.Label>Home Insurance</Form.Label>
-                    <Form.Control type="text">
-                    </Form.Control>
-                    <Form.Select>
-                        {this.getSymbolsAsOptions()}
-                    </Form.Select>
-                </Form.Group>
-                <Form.Group>
-                    <Form.Label>PMI Insurance</Form.Label>
-                    <Form.Control type="text">
-                    </Form.Control>
-                    <Form.Select>
-                        {this.getSymbolsAsOptions()}
-                    </Form.Select>
-                </Form.Group>
-                <Form.Group>
-                    <Form.Label>HOA Fee</Form.Label>
-                    <Form.Control type="text">
-                    </Form.Control>
-                    <Form.Select>
-                        {this.getSymbolsAsOptions()}
-                    </Form.Select>
-                </Form.Group>
-                <Form.Group>
-                    <Form.Label>Other Costs</Form.Label>
-                    <Form.Control type="text">
-                    </Form.Control>
-                    <Form.Select>
-                        {this.getSymbolsAsOptions()}
-                    </Form.Select>
-                </Form.Group>
-                <Form.Text>Annual Tax & Cost Increase</Form.Text>
-                <Form.Group>
-                    <Form.Label>Property Taxes Increase</Form.Label>
-                    <Form.Control type="text" placeholder="%">
-                    </Form.Control>
-                </Form.Group>
-                <Form.Group>
-                    <Form.Label>Home Insurance Increase</Form.Label>
-                    <Form.Control type="text" placeholder="%">
-                    </Form.Control>
-                </Form.Group>
-                <Form.Group>
-                    <Form.Label>HOA Fee Increase</Form.Label>
-                    <Form.Control type="text" placeholder="%">
-                    </Form.Control>
-                </Form.Group>
-                <Form.Group>
-                    <Form.Label>Other Costs Increase</Form.Label>
-                    <Form.Control type="text" placeholder="%">
-                    </Form.Control>
-                </Form.Group>
+                {(this.state.expandForm1 === true) ?
+                    <>
+                        <Form.Group>
+                            <Form.Label>Property Taxes</Form.Label>
+                            <Form.Control type="text">
+                            </Form.Control>
+                            <Form.Select>
+                            {this.getSymbolsAsOptions()}
+                            </Form.Select>
+                        </Form.Group>
+                        <Form.Group>
+                            <Form.Label>Home Insurance</Form.Label>
+                            <Form.Control type="text">
+                            </Form.Control>
+                            <Form.Select>
+                                {this.getSymbolsAsOptions()}
+                            </Form.Select>
+                        </Form.Group>
+                        <Form.Group>
+                            <Form.Label>PMI Insurance</Form.Label>
+                            <Form.Control type="text">
+                            </Form.Control>
+                            <Form.Select>
+                                {this.getSymbolsAsOptions()}
+                            </Form.Select>
+                        </Form.Group>
+                        <Form.Group>
+                            <Form.Label>HOA Fee</Form.Label>
+                            <Form.Control type="text">
+                            </Form.Control>
+                            <Form.Select>
+                                {this.getSymbolsAsOptions()}
+                            </Form.Select>
+                        </Form.Group>
+                        <Form.Group>
+                            <Form.Label>Other Costs</Form.Label>
+                            <Form.Control type="text">
+                            </Form.Control>
+                            <Form.Select>
+                                {this.getSymbolsAsOptions()}
+                            </Form.Select>
+                        </Form.Group>
+                        <Form.Text>Annual Tax & Cost Increase</Form.Text>
+                        <Form.Group>
+                            <Form.Label>Property Taxes Increase</Form.Label>
+                            <Form.Control type="text" placeholder="%">
+                            </Form.Control>
+                        </Form.Group>
+                        <Form.Group>
+                            <Form.Label>Home Insurance Increase</Form.Label>
+                            <Form.Control type="text" placeholder="%">
+                            </Form.Control>
+                        </Form.Group>
+                        <Form.Group>
+                            <Form.Label>HOA Fee Increase</Form.Label>
+                            <Form.Control type="text" placeholder="%">
+                            </Form.Control>
+                        </Form.Group>
+                        <Form.Group>
+                            <Form.Label>Other Costs Increase</Form.Label>
+                            <Form.Control type="text" placeholder="%">
+                            </Form.Control>
+                        </Form.Group>
+                    </>                
+                : null}
                 <Button type="submit">Calculate</Button>
                 <Button onClick={this.clearForm}>Clear</Button>
             </Form>
             {/* Display the result if it exists */}
-            {this.state.result !== null && (
-                    <div>
-                        <h2>Result: {this.state.result}</h2>
-                    </div>
+            {this.state.monthlyPayment !== null && (
+                <Table striped bordered size="sm">
+                    <thead>
+                        <tr>
+                            <th>Month</th>
+                            <th>Interest</th>
+                            <th>Principal</th>
+                            <th>Ending Balance</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {this.fillValues()}
+                    </tbody>
+                </Table>
             )}
           </Container>
           );
