@@ -3,11 +3,13 @@ import React from "react";
 import { Button, Container, Form, InputGroup, Table } from "react-bootstrap";
 
 interface IProps{
+
 }
 
 interface IState{
     homePrice: number | '';
-    downPayment: number | '';
+    downPaymentNum: number | '';
+    downPaymentSym: '%' | '$';
     interestRate: number | '';
     loanTerm: number | '';
     startDate: number | '';
@@ -18,16 +20,18 @@ interface IState{
     otherCosts: number | '';
     monthlyPayment: number | null,
     expandForm1: boolean,
+    monthOrYear: boolean,
 }
 
 export default class Calculator extends React.Component<IProps, IState>{
     constructor(props: IProps){
         super(props);
         this.state = {
-            homePrice: '',
-            downPayment: '',
-            interestRate: '',
-            loanTerm: '',
+            homePrice: 1000000,
+            downPaymentNum: 20,
+            downPaymentSym: '%',
+            interestRate: 6,
+            loanTerm: 30,
             startDate: '',
             propertyTax: '',
             homeInsurance: '',
@@ -35,7 +39,8 @@ export default class Calculator extends React.Component<IProps, IState>{
             hoaFee: '',
             otherCosts: '',
             monthlyPayment: null,
-            expandForm1: false
+            expandForm1: false,
+            monthOrYear: false,
         };
     }
 
@@ -58,7 +63,8 @@ export default class Calculator extends React.Component<IProps, IState>{
     clearForm = () => {
         this.setState({
             homePrice: '',
-            downPayment: '',
+            downPaymentNum: '',
+            downPaymentSym: '%',
             interestRate: '',
             loanTerm: '',
             startDate: '',
@@ -69,6 +75,7 @@ export default class Calculator extends React.Component<IProps, IState>{
             otherCosts: '',
             monthlyPayment: null,
             expandForm1: false,
+            monthOrYear: false,
         });
     };
 
@@ -81,18 +88,22 @@ export default class Calculator extends React.Component<IProps, IState>{
 
     handleOnSubmit = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        let { homePrice, interestRate, downPayment, loanTerm} = this.state;
+        let { homePrice, interestRate, downPaymentNum, loanTerm} = this.state;
         if(homePrice === ''){
             homePrice = 0;
         } 
         if(interestRate === ''){
             interestRate = 0;
         }
-        if(downPayment === ''){
-            downPayment = 0;
+        if(downPaymentNum === ''){
+            downPaymentNum = 0;
         }
         if(loanTerm === ''){
             loanTerm = 0;
+        }
+        let downPayment = downPaymentNum;
+        if(this.state.downPaymentSym === '%'){
+            downPayment = (homePrice * downPayment) / 100;
         }
         const loanAmount = homePrice - downPayment;
         const monthlyInterestRate = interestRate / 1200;
@@ -105,36 +116,61 @@ export default class Calculator extends React.Component<IProps, IState>{
         this.setState({ expandForm1: e.target.checked });
     }
 
-    fillValues = () => {
-        let { homePrice, interestRate, downPayment, loanTerm} = this.state;
+    handleSwitchChange2 = (e: React.ChangeEvent<HTMLInputElement>, ) =>{
+        this.setState({ monthOrYear: e.target.checked });
+    }
+
+    displayResult = (showMontly: boolean) => {
+        let { homePrice, interestRate, downPaymentNum, loanTerm} = this.state;
         if(homePrice === ''){
             homePrice = 0;
         } 
         if(interestRate === ''){
             interestRate = 0;
         }
-        if(downPayment === ''){
-            downPayment = 0;
+        if(downPaymentNum === ''){
+            downPaymentNum = 0;
         }
         if(loanTerm === ''){
             loanTerm = 0;
         }
+        const ceilOrZero = (num : number) =>{
+            if(num < 0){
+                return 0;
+            }
+            return Math.ceil(num);
+        }
+        let downPayment = downPaymentNum;
+        if(this.state.downPaymentSym === '%'){
+            downPayment = (homePrice * downPayment) / 100;
+        }
         const monthlyInterestRate = interestRate / 1200;
         const monthlyPayment = this.state.monthlyPayment === null ? 0 : this.state.monthlyPayment;
-        const tableRows = [];
+        const tableRowsMonthly = [];
+        const tableRowsYearly = [];
         let remainingBalance = homePrice - downPayment;
-        for(let i = 0; i < loanTerm * 12; i++){
+        let yearlyInterestPayment = 0;
+        let yearlyPrincipalPayment = 0;
+        for(let i = 1; i <= loanTerm * 12; i++){
             let interestPayment = remainingBalance * monthlyInterestRate;
             let principalPayment = monthlyPayment - interestPayment;
             remainingBalance = remainingBalance - principalPayment;
-            tableRows.push([interestPayment, principalPayment, remainingBalance]);
+            yearlyInterestPayment += interestPayment;
+            yearlyPrincipalPayment += principalPayment;
+            tableRowsMonthly.push([ceilOrZero(interestPayment), ceilOrZero(principalPayment), ceilOrZero(remainingBalance)]);
+            if(i % 12 == 0){
+                tableRowsYearly.push([ceilOrZero(yearlyInterestPayment), ceilOrZero(yearlyPrincipalPayment), ceilOrZero(remainingBalance)]);
+                yearlyInterestPayment = 0;
+                yearlyPrincipalPayment = 0;
+            }
         }
-        return tableRows.map((row, index) => (
+        const resultDisplay = showMontly ? tableRowsMonthly : tableRowsYearly;
+        return resultDisplay.map((row, index) => (
             <tr>
                 <td>{index + 1}</td>
-                <td>{row[0]}</td>
-                <td>{row[1]}</td>
-                <td>{row[2]}</td>
+                <td>${row[0]}</td>
+                <td>${row[1]}</td>
+                <td>${row[2]}</td>
             </tr>
         ));
     }
@@ -150,7 +186,7 @@ export default class Calculator extends React.Component<IProps, IState>{
                 </Form.Group>
                 <Form.Group>
                     <Form.Label>Downpayment</Form.Label>
-                    <Form.Control type="text" name="downPayment" value={this.state.downPayment} onChange={this.handleInputOnChange}>
+                    <Form.Control type="text" name="downPayment" value={this.state.downPaymentNum} onChange={this.handleInputOnChange}>
                     </Form.Control>
                     <Form.Select>
                         {this.getSymbolsAsOptions()}
@@ -256,19 +292,25 @@ export default class Calculator extends React.Component<IProps, IState>{
                 <Button type="submit">Calculate</Button>
                 <Button onClick={this.clearForm}>Clear</Button>
             </Form>
+            <Form.Check
+                type="switch"
+                label="Show Payments Month by Month"
+                checked={this.state.monthOrYear}
+                onChange={this.handleSwitchChange2}
+            />
             {/* Display the result if it exists */}
             {this.state.monthlyPayment !== null && (
                 <Table striped bordered size="sm">
                     <thead>
                         <tr>
-                            <th>Month</th>
+                            <th>{this.state.monthOrYear ? "Month" : "Year"}</th>
                             <th>Interest</th>
                             <th>Principal</th>
                             <th>Ending Balance</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {this.fillValues()}
+                        {this.displayResult(this.state.monthOrYear)}
                     </tbody>
                 </Table>
             )}
