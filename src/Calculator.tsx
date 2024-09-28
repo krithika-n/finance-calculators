@@ -89,7 +89,6 @@ export default class Calculator extends React.Component<IProps, IState>{
         }
         const result = (homePrice*interestRate*downPayment)/ 100;
         this.setState({ result });
-
     }
     
 
@@ -97,18 +96,11 @@ export default class Calculator extends React.Component<IProps, IState>{
         return(
           <Container>
             <Form onSubmit={this.handleOnSubmit}>
-                <Row>
                 <Form.Group>
-                    <Col>
-                        <Form.Label>Home Price</Form.Label>
-                    </Col>
-                    <Col>
-                        <Form.Control name="homePrice" type ="text" value={this.state.homePrice} onChange={this.handleInputOnChange}>
-                        </Form.Control>
-                    </Col>
+                    <Form.Label>Home Price</Form.Label>
+                    <Form.Control name="homePrice" type ="text" value={this.state.homePrice} onChange={this.handleInputOnChange}>
+                    </Form.Control>
                 </Form.Group>
-                </Row>
-                
                 <Form.Group>
                     <Form.Label>Downpayment</Form.Label>
                     <Form.Control type="text" name="downPayment" value={this.state.downPayment} onChange={this.handleInputOnChange}>
@@ -211,6 +203,12 @@ export default class Calculator extends React.Component<IProps, IState>{
                 <Button type="submit">Calculate</Button>
                 <Button onClick={this.clearForm}>Clear</Button>
             </Form>
+            {/* Display the result if it exists */}
+            {this.state.result !== null && (
+                    <div>
+                        <h2>Result: {this.state.result}</h2>
+                    </div>
+            )}
           </Container>
           );
     }
