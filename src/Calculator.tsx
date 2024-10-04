@@ -34,11 +34,11 @@ export default class Calculator extends React.Component<IProps, IState>{
             interestRate: 6,
             loanTerm: 30,
             startDate: '',
-            propertyTax: '',
-            homeInsurance: '',
-            pmiInsurance: '',
-            hoaFee: '',
-            otherCosts: '',
+            propertyTax: 1,
+            homeInsurance: 1500,
+            pmiInsurance: 900,
+            hoaFee: 100,
+            otherCosts: 200,
             monthlyPayment: null,
             monthlyPaymentTotal: null,
             expandForm1: false,
@@ -170,7 +170,7 @@ export default class Calculator extends React.Component<IProps, IState>{
             otherCosts = 0;
         }
         const monthlyPaymentTotal = this.state.monthlyPaymentTotal === null ? 0 : this.state.monthlyPaymentTotal;
-        const tableRows = [];
+        const monthlyPayment = this.state.monthlyPayment === null ? 0 : this.state.monthlyPayment;
         const ceilOrZero = (num : number) =>{
             if(num < 0){
                 return 0;
@@ -189,7 +189,7 @@ export default class Calculator extends React.Component<IProps, IState>{
         let yearlyPrincipalPayment = 0;
         for(let i = 1; i <= loanTerm * 12; i++){
             let interestPayment = remainingBalance * monthlyInterestRate;
-            let principalPayment = monthlyPaymentTotal - interestPayment;
+            let principalPayment = monthlyPayment - interestPayment;
             remainingBalance = remainingBalance - principalPayment;
             yearlyInterestPayment += interestPayment;
             yearlyPrincipalPayment += principalPayment;
